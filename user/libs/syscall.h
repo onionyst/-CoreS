@@ -28,6 +28,4 @@ int sys_getdirentry(int fd, struct dirent *dirent);
 int sys_dup(int fd1, int fd2);
 void sys_lab6_set_priority(uint32_t priority); //only for lab6
 
-
 #endif /* !__USER_LIBS_SYSCALL_H__ */
-

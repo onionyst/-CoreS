@@ -11,4 +11,3 @@ int ide_read_secs(unsigned short ideno, uint32_t secno, void *dst, size_t nsecs)
 int ide_write_secs(unsigned short ideno, uint32_t secno, const void *src, size_t nsecs);
 
 #endif /* !__KERN_DRIVER_IDE_H__ */
-

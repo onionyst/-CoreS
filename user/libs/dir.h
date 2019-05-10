@@ -4,7 +4,8 @@
 #include <defs.h>
 #include <dirent.h>
 
-typedef struct {
+typedef struct
+{
     int fd;
     struct dirent dirent;
 } DIR;
@@ -16,4 +17,3 @@ int chdir(const char *path);
 int getcwd(char *buffer, size_t len);
 
 #endif /* !__USER_LIBS_DIR_H__ */
-

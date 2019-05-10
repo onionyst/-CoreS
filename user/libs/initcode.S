@@ -20,5 +20,3 @@ _start:
     # call user-program function
     call umain
 1:  jmp 1b
-
-    

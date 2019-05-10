@@ -1,13 +1,14 @@
 #ifndef __LIBS_ELF_H__
 #define __LIBS_ELF_H__
 
-#include <defs.h>
+#include "defs.h"
 
-#define ELF_MAGIC   0x464C457FU         // "\x7FELF" in little endian
+#define ELF_MAGIC 0x464C457FU // "\x7FELF" in little endian
 
 /* file header */
-struct elfhdr {
-    uint32_t e_magic;     // must equal ELF_MAGIC
+struct elfhdr
+{
+    uint32_t e_magic; // must equal ELF_MAGIC
     uint8_t e_elf[12];
     uint16_t e_type;      // 1=relocatable, 2=executable, 3=shared object, 4=core image
     uint16_t e_machine;   // 3=x86, 4=68K, etc.
@@ -25,7 +26,8 @@ struct elfhdr {
 };
 
 /* program section header */
-struct proghdr {
+struct proghdr
+{
     uint32_t p_type;   // loadable code or data, dynamic linking info,etc.
     uint32_t p_offset; // file offset of segment
     uint32_t p_va;     // virtual address to map segment
@@ -37,12 +39,11 @@ struct proghdr {
 };
 
 /* values for Proghdr::p_type */
-#define ELF_PT_LOAD                     1
+#define ELF_PT_LOAD 1
 
 /* flag bits for Proghdr::p_flags */
-#define ELF_PF_X                        1
-#define ELF_PF_W                        2
-#define ELF_PF_R                        4
+#define ELF_PF_X 1
+#define ELF_PF_W 2
+#define ELF_PF_R 4
 
 #endif /* !__LIBS_ELF_H__ */
-

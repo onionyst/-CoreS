@@ -27,4 +27,3 @@ switch_to:                      # switch_to(from, to)
     pushl 0(%eax)               # push eip
 
     ret
-

@@ -34,7 +34,6 @@ SECTIONS {
 
     PROVIDE(end = .);
 
-
     /* Place debugging symbols so that they can be found by
      * the kernel debugger.
      * Specifically, the four words at 0x200000 mark the beginning of

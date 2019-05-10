@@ -19,8 +19,9 @@
 
 #define TICK_NUM 100
 
-static void print_ticks() {
-    cprintf("%d ticks\n",TICK_NUM);
+static void print_ticks()
+{
+    cprintf("%d ticks\n", TICK_NUM);
 #ifdef DEBUG_GRADE
     cprintf("End of Test.\n");
     panic("EOT: kernel seems ok.");
@@ -36,14 +37,13 @@ static void print_ticks() {
 static struct gatedesc idt[256] = {{0}};
 
 static struct pseudodesc idt_pd = {
-    sizeof(idt) - 1, (uintptr_t)idt
-};
+    sizeof(idt) - 1, (uintptr_t)idt};
 
 /* idt_init - initialize IDT to each of the entry points in kern/trap/vectors.S */
-void
-idt_init(void) {
-     /* LAB1 YOUR CODE : STEP 2 */
-     /* (1) Where are the entry addrs of each Interrupt Service Routine (ISR)?
+void idt_init(void)
+{
+    /* LAB1 YOUR CODE : STEP 2 */
+    /* (1) Where are the entry addrs of each Interrupt Service Routine (ISR)?
       *     All ISR's entry addrs are stored in __vectors. where is uintptr_t __vectors[] ?
       *     __vectors[] is in kern/trap/vector.S which is produced by tools/vector.c
       *     (try "make" command in lab1, then you will find vector.S in kern/trap DIR)
@@ -54,14 +54,25 @@ idt_init(void) {
       *     You don't know the meaning of this instruction? just google it! and check the libs/x86.h to know more.
       *     Notice: the argument of lidt is idt_pd. try to find it!
       */
-     /* LAB5 YOUR CODE */ 
-     //you should update your lab1 code (just add ONE or TWO lines of code), let user app to use syscall to get the service of ucore
-     //so you should setup the syscall interrupt gate in here
+    /* LAB5 YOUR CODE */
+    //you should update your lab1 code (just add ONE or TWO lines of code), let user app to use syscall to get the service of ucore
+    //so you should setup the syscall interrupt gate in here
+
+    extern uintptr_t __vectors[];
+    int i, idt_len = sizeof(idt) / sizeof(struct gatedesc);
+    for (i = 0; i < idt_len; ++i)
+    {
+        SETGATE(idt[i], 0, GD_KTEXT, __vectors[i], DPL_KERNEL);
+    }
+    SETGATE(idt[T_SYSCALL], 1, GD_KTEXT, __vectors[T_SYSCALL], DPL_USER);
+    //    SETGATE(idt[T_SWITCH_TOK], 0, GD_KTEXT, __vectors[T_SWITCH_TOK], DPL_USER);
+    lidt(&idt_pd);
 }
 
 static const char *
-trapname(int trapno) {
-    static const char * const excnames[] = {
+trapname(int trapno)
+{
+    static const char *const excnames[] = {
         "Divide error",
         "Debug",
         "Non-Maskable Interrupt",
@@ -81,32 +92,54 @@ trapname(int trapno) {
         "x87 FPU Floating-Point Error",
         "Alignment Check",
         "Machine-Check",
-        "SIMD Floating-Point Exception"
-    };
+        "SIMD Floating-Point Exception"};
 
-    if (trapno < sizeof(excnames)/sizeof(const char * const)) {
+    if (trapno < sizeof(excnames) / sizeof(const char *const))
+    {
         return excnames[trapno];
     }
-    if (trapno >= IRQ_OFFSET && trapno < IRQ_OFFSET + 16) {
+    if (trapno >= IRQ_OFFSET && trapno < IRQ_OFFSET + 16)
+    {
         return "Hardware Interrupt";
     }
     return "(unknown trap)";
 }
 
 /* trap_in_kernel - test if trap happened in kernel */
-bool
-trap_in_kernel(struct trapframe *tf) {
+bool trap_in_kernel(struct trapframe *tf)
+{
     return (tf->tf_cs == (uint16_t)KERNEL_CS);
 }
 
 static const char *IA32flags[] = {
-    "CF", NULL, "PF", NULL, "AF", NULL, "ZF", "SF",
-    "TF", "IF", "DF", "OF", NULL, NULL, "NT", NULL,
-    "RF", "VM", "AC", "VIF", "VIP", "ID", NULL, NULL,
+    "CF",
+    NULL,
+    "PF",
+    NULL,
+    "AF",
+    NULL,
+    "ZF",
+    "SF",
+    "TF",
+    "IF",
+    "DF",
+    "OF",
+    NULL,
+    NULL,
+    "NT",
+    NULL,
+    "RF",
+    "VM",
+    "AC",
+    "VIF",
+    "VIP",
+    "ID",
+    NULL,
+    NULL,
 };
 
-void
-print_trapframe(struct trapframe *tf) {
+void print_trapframe(struct trapframe *tf)
+{
     cprintf("trapframe at %p\n", tf);
     print_regs(&tf->tf_regs);
     cprintf("  ds   0x----%04x\n", tf->tf_ds);
@@ -120,21 +153,24 @@ print_trapframe(struct trapframe *tf) {
     cprintf("  flag 0x%08x ", tf->tf_eflags);
 
     int i, j;
-    for (i = 0, j = 1; i < sizeof(IA32flags) / sizeof(IA32flags[0]); i ++, j <<= 1) {
-        if ((tf->tf_eflags & j) && IA32flags[i] != NULL) {
+    for (i = 0, j = 1; i < sizeof(IA32flags) / sizeof(IA32flags[0]); i++, j <<= 1)
+    {
+        if ((tf->tf_eflags & j) && IA32flags[i] != NULL)
+        {
             cprintf("%s,", IA32flags[i]);
         }
     }
     cprintf("IOPL=%d\n", (tf->tf_eflags & FL_IOPL_MASK) >> 12);
 
-    if (!trap_in_kernel(tf)) {
+    if (!trap_in_kernel(tf))
+    {
         cprintf("  esp  0x%08x\n", tf->tf_esp);
         cprintf("  ss   0x----%04x\n", tf->tf_ss);
     }
 }
 
-void
-print_regs(struct pushregs *regs) {
+void print_regs(struct pushregs *regs)
+{
     cprintf("  edi  0x%08x\n", regs->reg_edi);
     cprintf("  esi  0x%08x\n", regs->reg_esi);
     cprintf("  ebp  0x%08x\n", regs->reg_ebp);
@@ -146,7 +182,8 @@ print_regs(struct pushregs *regs) {
 }
 
 static inline void
-print_pgfault(struct trapframe *tf) {
+print_pgfault(struct trapframe *tf)
+{
     /* error_code:
      * bit 0 == 0 means no page found, 1 means protection fault
      * bit 1 == 0 means read, 1 means write
@@ -159,18 +196,23 @@ print_pgfault(struct trapframe *tf) {
 }
 
 static int
-pgfault_handler(struct trapframe *tf) {
+pgfault_handler(struct trapframe *tf)
+{
     extern struct mm_struct *check_mm_struct;
-    if(check_mm_struct !=NULL) { //used for test check_swap
-            print_pgfault(tf);
-        }
+    if (check_mm_struct != NULL)
+    { //used for test check_swap
+        print_pgfault(tf);
+    }
     struct mm_struct *mm;
-    if (check_mm_struct != NULL) {
+    if (check_mm_struct != NULL)
+    {
         assert(current == idleproc);
         mm = check_mm_struct;
     }
-    else {
-        if (current == NULL) {
+    else
+    {
+        if (current == NULL)
+        {
             print_trapframe(tf);
             print_pgfault(tf);
             panic("unhandled page fault.\n");
@@ -184,24 +226,30 @@ static volatile int in_swap_tick_event = 0;
 extern struct mm_struct *check_mm_struct;
 
 static void
-trap_dispatch(struct trapframe *tf) {
+trap_dispatch(struct trapframe *tf)
+{
     char c;
 
-    int ret=0;
+    int ret = 0;
 
-    switch (tf->tf_trapno) {
-    case T_PGFLT:  //page fault
-        if ((ret = pgfault_handler(tf)) != 0) {
+    switch (tf->tf_trapno)
+    {
+    case T_PGFLT: //page fault
+        if ((ret = pgfault_handler(tf)) != 0)
+        {
             print_trapframe(tf);
-            if (current == NULL) {
+            if (current == NULL)
+            {
                 panic("handle pgfault failed. ret=%d\n", ret);
             }
-            else {
-                if (trap_in_kernel(tf)) {
+            else
+            {
+                if (trap_in_kernel(tf))
+                {
                     panic("handle pgfault failed in kernel mode. ret=%d\n", ret);
                 }
                 cprintf("killed by kernel.\n");
-                panic("handle user mode pgfault failed. ret=%d\n", ret); 
+                panic("handle user mode pgfault failed. ret=%d\n", ret);
                 do_exit(-E_KILLED);
             }
         }
@@ -212,7 +260,7 @@ trap_dispatch(struct trapframe *tf) {
     case IRQ_OFFSET + IRQ_TIMER:
 #if 0
     LAB3 : If some page replacement algorithm(such as CLOCK PRA) need tick to change the priority of pages,
-    then you can add code here. 
+    then you can add code here.
 #endif
         /* LAB1 YOUR CODE : STEP 3 */
         /* handle the timer interrupt */
@@ -228,20 +276,25 @@ trap_dispatch(struct trapframe *tf) {
         /* you should upate you lab5 code
          * IMPORTANT FUNCTIONS:
 	     * sched_class_proc_tick
-         */         
+         */
         /* LAB7 YOUR CODE */
         /* you should upate you lab6 code
          * IMPORTANT FUNCTIONS:
 	     * run_timer_list
          */
+
+        ++ticks;
+        assert(current != NULL);
+        run_timer_list();
+
         break;
     case IRQ_OFFSET + IRQ_COM1:
     case IRQ_OFFSET + IRQ_KBD:
         // There are user level shell in LAB8, so we need change COM/KBD interrupt processing.
         c = cons_getc();
         {
-          extern void dev_stdin_write(char c);
-          dev_stdin_write(c);
+            extern void dev_stdin_write(char c);
+            dev_stdin_write(c);
         }
         break;
     //LAB1 CHALLENGE 1 : YOUR CODE you should modify below codes.
@@ -255,13 +308,13 @@ trap_dispatch(struct trapframe *tf) {
         break;
     default:
         print_trapframe(tf);
-        if (current != NULL) {
+        if (current != NULL)
+        {
             cprintf("unhandled trap.\n");
             do_exit(-E_KILLED);
         }
         // in kernel, it must be a mistake
         panic("unexpected trap in kernel.\n");
-
     }
 }
 
@@ -270,31 +323,35 @@ trap_dispatch(struct trapframe *tf) {
  * the code in kern/trap/trapentry.S restores the old CPU state saved in the
  * trapframe and then uses the iret instruction to return from the exception.
  * */
-void
-trap(struct trapframe *tf) {
+void trap(struct trapframe *tf)
+{
     // dispatch based on what type of trap occurred
     // used for previous projects
-    if (current == NULL) {
+    if (current == NULL)
+    {
         trap_dispatch(tf);
     }
-    else {
+    else
+    {
         // keep a trapframe chain in stack
         struct trapframe *otf = current->tf;
         current->tf = tf;
-    
+
         bool in_kernel = trap_in_kernel(tf);
-    
+
         trap_dispatch(tf);
-    
+
         current->tf = otf;
-        if (!in_kernel) {
-            if (current->flags & PF_EXITING) {
+        if (!in_kernel)
+        {
+            if (current->flags & PF_EXITING)
+            {
                 do_exit(-E_KILLED);
             }
-            if (current->need_resched) {
+            if (current->need_resched)
+            {
                 schedule();
             }
         }
     }
 }
-
