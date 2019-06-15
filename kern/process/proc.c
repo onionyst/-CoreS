@@ -837,7 +837,7 @@ load_icode(int fd, int argc, char **kargv)
 
     // ASLR: stack top
     srand(ticks);
-    uintptr_t stacktop = USTACKTOP - ((rand() % USTACK_RND_MAX) & ~0xf);
+    uintptr_t stacktop = USTACKTOP - ((rand() & USTACK_RND_MASK) << PGSHIFT);
 
     stacktop -= (argv_size / sizeof(long) + 1) * sizeof(long);
     char **uargv = (char **)(stacktop - argc * sizeof(char *));
