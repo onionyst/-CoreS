@@ -88,6 +88,8 @@
 #define USTACKPAGE 256                   // # of pages in user stack
 #define USTACKSIZE (USTACKPAGE * PGSIZE) // sizeof user stack
 
+#define UBRK_RND_MASK 0x7FF // 8 MB ASLR for 32-bit
+
 #define USERBASE 0x00200000
 #define UTEXT 0x00800000 // where user programs generally begin
 #define USTAB USERBASE   // the location of the user STABS data structure

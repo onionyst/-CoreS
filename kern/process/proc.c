@@ -666,6 +666,8 @@ load_icode_read(int fd, void *buf, size_t len, off_t offset)
 static int
 load_icode(int fd, int argc, char **kargv)
 {
+    srand(ticks);
+
     /* LAB8:EXERCISE2 YOUR CODE  HINT:how to load the file with handler fd  in to process's memory? how to setup argc/argv?
      * MACROs or Functions:
      *  mm_create        - create a mm
@@ -822,14 +824,15 @@ load_icode(int fd, int argc, char **kargv)
         }
     }
 
-    mm->brk_start = mm->brk = ROUNDUP(mm->brk_start, PGSIZE);
+    mm->brk_start = ROUNDUP(mm->brk_start, PGSIZE);
+    mm->brk_start += ((rand() % UBRK_RND_MASK) << PGSHIFT);
+    mm->brk = mm->brk_start;
 
     // tmp
     cprintf("mm->brk_start = %08x\n", mm->brk_start);
 
     sysfile_close(fd);
 
-    srand(ticks);
     uintptr_t stacktop = USTACKTOP - ((rand() % USTACK_RND_MASK) << PGSHIFT);
 
     vm_flags = VM_READ | VM_WRITE | VM_STACK;
