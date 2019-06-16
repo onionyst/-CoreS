@@ -829,15 +829,18 @@ load_icode(int fd, int argc, char **kargv)
 
     sysfile_close(fd);
 
+    srand(ticks);
+    uintptr_t stacktop = USTACKTOP - ((rand() % USTACK_RND_MASK) << PGSHIFT);
+
     vm_flags = VM_READ | VM_WRITE | VM_STACK;
-    if ((ret = mm_map(mm, USTACKTOP - USTACKSIZE, USTACKSIZE, vm_flags, NULL)) != 0)
+    if ((ret = mm_map(mm, stacktop - USTACKSIZE, USTACKSIZE, vm_flags, NULL)) != 0)
     {
         goto bad_cleanup_mmap;
     }
-    assert(pgdir_alloc_page(mm->pgdir, USTACKTOP - PGSIZE, PTE_USER) != NULL);
-    assert(pgdir_alloc_page(mm->pgdir, USTACKTOP - 2 * PGSIZE, PTE_USER) != NULL);
-    assert(pgdir_alloc_page(mm->pgdir, USTACKTOP - 3 * PGSIZE, PTE_USER) != NULL);
-    assert(pgdir_alloc_page(mm->pgdir, USTACKTOP - 4 * PGSIZE, PTE_USER) != NULL);
+    assert(pgdir_alloc_page(mm->pgdir, stacktop - PGSIZE, PTE_USER) != NULL);
+    assert(pgdir_alloc_page(mm->pgdir, stacktop - 2 * PGSIZE, PTE_USER) != NULL);
+    assert(pgdir_alloc_page(mm->pgdir, stacktop - 3 * PGSIZE, PTE_USER) != NULL);
+    assert(pgdir_alloc_page(mm->pgdir, stacktop - 4 * PGSIZE, PTE_USER) != NULL);
 
     mm_count_inc(mm);
     current->mm = mm;
@@ -850,10 +853,6 @@ load_icode(int fd, int argc, char **kargv)
     {
         argv_size += strnlen(kargv[i], EXEC_MAX_ARG_LEN + 1) + 1;
     }
-
-    // ASLR: stack top
-    srand(ticks);
-    uintptr_t stacktop = USTACKTOP - ((rand() & USTACK_RND_MASK) << PGSHIFT);
 
     stacktop -= (argv_size / sizeof(long) + 1) * sizeof(long);
     char **uargv = (char **)(stacktop - argc * sizeof(char *));
