@@ -49,6 +49,7 @@ int main(void)
     char *s = "ABCDEFG";
     cprintf("%p %p %p\n", &x, &y, &s);
     print_memory((unsigned char *)(&s - 2), 0x20);
+    print_memory((unsigned char *)s, 0x8);
 
     cprintf("====== Pressure Fibonacci ======\n");
     cprintf("F[10] = %d\n", pressure_fibonacci(10));

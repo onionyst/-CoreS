@@ -405,6 +405,11 @@ copy_mm(uint32_t clone_flags, struct proc_struct *proc)
     }
 
 good_mm:
+    if (mm != oldmm)
+    {
+        mm->brk_start = oldmm->brk_start;
+        mm->brk = oldmm->brk;
+    }
     mm_count_inc(mm);
     proc->mm = mm;
     proc->cr3 = PADDR(mm->pgdir);
@@ -661,6 +666,8 @@ load_icode_read(int fd, void *buf, size_t len, off_t offset)
 static int
 load_icode(int fd, int argc, char **kargv)
 {
+    srand(ticks);
+
     /* LAB8:EXERCISE2 YOUR CODE  HINT:how to load the file with handler fd  in to process's memory? how to setup argc/argv?
      * MACROs or Functions:
      *  mm_create        - create a mm
@@ -810,10 +817,22 @@ load_icode(int fd, int argc, char **kargv)
             memset(page2kva(page) + off, 0, size);
             start += size;
         }
+
+        if (ph->p_va + ph->p_memsz > mm->brk_start)
+        {
+            mm->brk_start = ph->p_va + ph->p_memsz;
+        }
     }
+
+    mm->brk_start = ROUNDUP(mm->brk_start, PGSIZE);
+    mm->brk_start += ((rand() % UBRK_RND_MASK) << PGSHIFT);
+    mm->brk = mm->brk_start;
+
+    // tmp
+    cprintf("mm->brk_start = %08x\n", mm->brk_start);
+
     sysfile_close(fd);
 
-    srand(ticks);
     uintptr_t stacktop = USTACKTOP - ((rand() % USTACK_RND_MASK) << PGSHIFT);
 
     vm_flags = VM_READ | VM_WRITE | VM_STACK;
@@ -1260,5 +1279,66 @@ int do_sleep(unsigned int time)
     schedule();
 
     del_timer(timer);
+    return 0;
+}
+
+int do_brk(uintptr_t *brk_store)
+{
+    struct mm_struct *mm = current->mm;
+    if (mm == NULL)
+    {
+        panic("kernel thread call sys_brk!!.\n");
+    }
+    if (brk_store == NULL)
+    {
+        return -E_INVAL;
+    }
+
+    uintptr_t brk;
+    lock_mm(mm);
+    if (!copy_from_user(mm, &brk, brk_store, sizeof(uintptr_t), 1))
+    {
+        unlock_mm(mm);
+        return -E_INVAL;
+    }
+
+    if (brk < mm->brk_start)
+    {
+        goto out_unlock;
+    }
+
+    uintptr_t newbrk = ROUNDUP(brk, PGSIZE), oldbrk = mm->brk;
+    assert(oldbrk % PGSIZE == 0);
+    if (newbrk == oldbrk)
+    {
+        goto out_unlock;
+    }
+
+    // TODO: make mm_unmap work
+    if (newbrk < oldbrk)
+    {
+        if (mm_unmap(mm, newbrk, oldbrk - newbrk) != 0)
+        {
+            goto out_unlock;
+        }
+    }
+    else
+    {
+        if (find_vma_intersection(mm, oldbrk, newbrk + PGSIZE) != NULL)
+        {
+            goto out_unlock;
+        }
+        if (mm_brk(mm, oldbrk, newbrk - oldbrk) != 0)
+        {
+            goto out_unlock;
+        }
+    }
+
+    mm->brk = newbrk;
+
+out_unlock:
+    copy_to_user(mm, brk_store, &mm->brk, sizeof(uintptr_t));
+    unlock_mm(mm);
+
     return 0;
 }

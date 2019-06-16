@@ -99,6 +99,7 @@ int do_yield(void);
 int do_execve(const char *name, int argc, const char **argv);
 int do_wait(int pid, int *code_store);
 int do_kill(int pid);
+int do_brk(uintptr_t * brk_store);
 //FOR LAB6, set the process's priority (bigger value will get more CPU time)
 void lab6_set_priority(uint32_t priority);
 int do_sleep(unsigned int time);
