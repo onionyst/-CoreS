@@ -84,6 +84,7 @@
 
 #define USERTOP 0xB0000000
 #define USTACKTOP USERTOP
+#define USTACK_RND_MASK 0xFF             // 1 MB ASLR for 32-bit
 #define USTACKPAGE 256                   // # of pages in user stack
 #define USTACKSIZE (USTACKPAGE * PGSIZE) // sizeof user stack
 

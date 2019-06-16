@@ -15,6 +15,7 @@
 #include <fs.h>
 #include <vfs.h>
 #include <sysfile.h>
+#include <clock.h>
 
 /* ------------- process/thread mechanism design&implementation -------------
 (an simplified Linux process/thread mechanism )
@@ -834,7 +835,11 @@ load_icode(int fd, int argc, char **kargv)
         argv_size += strnlen(kargv[i], EXEC_MAX_ARG_LEN + 1) + 1;
     }
 
-    uintptr_t stacktop = USTACKTOP - (argv_size / sizeof(long) + 1) * sizeof(long);
+    // ASLR: stack top
+    srand(ticks);
+    uintptr_t stacktop = USTACKTOP - ((rand() & USTACK_RND_MASK) << PGSHIFT);
+
+    stacktop -= (argv_size / sizeof(long) + 1) * sizeof(long);
     char **uargv = (char **)(stacktop - argc * sizeof(char *));
 
     argv_size = 0;
