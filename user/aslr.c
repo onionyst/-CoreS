@@ -43,18 +43,20 @@ void print_memory(unsigned char *addr, int size)
 
 int main(void)
 {
+    cprintf("====== Stack Top ASLR ======\n");
     int x = 5;
     int y = 10;
     char *s = "ABCDEFG";
-
-    cprintf("====== Stack Top ASLR ======\n");
     cprintf("%p %p %p\n", &x, &y, &s);
     print_memory((unsigned char *)(&s - 2), 0x20);
 
     cprintf("====== Pressure Fibonacci ======\n");
     cprintf("F[10] = %d\n", pressure_fibonacci(10));
     cprintf("F[30] = %d\n", pressure_fibonacci(30));
-    cprintf("F[40] = %d\n", pressure_fibonacci(40));
+
+    cprintf("====== Stack Size Check ======\n");
+    int array[250 * 1024]; // stack is about 1MB
+    cprintf("array = %p\n", array);
 
     return 0;
 }
