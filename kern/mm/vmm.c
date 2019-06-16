@@ -59,8 +59,20 @@ mm_create(void)
 
         set_mm_count(mm, 0);
         sem_init(&(mm->mm_sem), 1);
+        mm->brk_start = mm->brk = 0;
     }
     return mm;
+}
+
+struct vma_struct *find_vma_intersection(struct mm_struct *mm, uintptr_t start,
+                                         uintptr_t end)
+{
+    struct vma_struct *vma = find_vma(mm, start);
+    if (vma != NULL && end <= vma->vm_start)
+    {
+        vma = NULL;
+    }
+    return vma;
 }
 
 // vma_create - alloc a vma_struct & initialize it. (addr range: vm_start~vm_end)
@@ -205,6 +217,35 @@ int mm_map(struct mm_struct *mm, uintptr_t addr, size_t len, uint32_t vm_flags,
 
 out:
     return ret;
+}
+
+int mm_brk(struct mm_struct *mm, uintptr_t addr, size_t len)
+{
+    uintptr_t start = ROUNDDOWN(addr, PGSIZE);
+    uintptr_t end = ROUNDUP(addr + len, PGSIZE);
+    if (!USER_ACCESS(start, end))
+    {
+        return -E_INVAL;
+    }
+
+    int ret;
+    if ((ret = mm_unmap(mm, start, end - start)) != 0)
+    {
+        return ret;
+    }
+    uint32_t vm_flags = VM_READ | VM_WRITE;
+    struct vma_struct *vma = find_vma(mm, start - 1);
+    if (vma != NULL && vma->vm_end == start && vma->vm_flags == vm_flags) // find adjacent last vma, auto resize it
+    {
+        vma->vm_end = end;
+        return 0;
+    }
+    if ((vma = vma_create(start, end, vm_flags)) == NULL)
+    {
+        return -E_NO_MEM;
+    }
+    insert_vma_struct(mm, vma);
+    return 0;
 }
 
 int dup_mmap(struct mm_struct *to, struct mm_struct *from)
@@ -402,6 +443,7 @@ check_pgfault(void)
 
     cprintf("check_pgfault() succeeded!\n");
 }
+
 //page fault number
 volatile unsigned int pgfault_num = 0;
 
@@ -635,4 +677,107 @@ bool copy_string(struct mm_struct *mm, char *dst, const char *src, size_t maxn)
         dst += part, src += part, maxn -= part;
         part = PGSIZE;
     }
+}
+
+// remove_vma_struct - remove vma from mm's rb tree link & list link
+static int remove_vma_struct(struct mm_struct *mm, struct vma_struct *vma)
+{
+    assert(mm == vma->vm_mm);
+    list_del(&(vma->list_link));
+    if (vma == mm->mmap_cache)
+    {
+        mm->mmap_cache = NULL;
+    }
+    mm->map_count--;
+    return 0;
+}
+
+static void vma_resize(struct vma_struct *vma, uintptr_t start, uintptr_t end)
+{
+    assert(start % PGSIZE == 0 && end % PGSIZE == 0);
+    assert(vma->vm_start <= start && start < end && end <= vma->vm_end);
+
+    vma->vm_start = start, vma->vm_end = end;
+}
+
+// vma_destroy - free vma_struct
+static void vma_destroy(struct vma_struct *vma)
+{
+    kfree(vma);
+}
+
+int mm_unmap(struct mm_struct *mm, uintptr_t addr, size_t len)
+{
+    uintptr_t start = ROUNDDOWN(addr, PGSIZE), end =
+                                                   ROUNDUP(addr + len, PGSIZE);
+    if (!USER_ACCESS(start, end))
+    {
+        return -E_INVAL;
+    }
+
+    assert(mm != NULL);
+
+    struct vma_struct *vma;
+    if ((vma = find_vma(mm, start)) == NULL || end <= vma->vm_start)
+    {
+        return 0;
+    }
+
+    if (vma->vm_start < start && end < vma->vm_end)
+    {
+        struct vma_struct *nvma;
+        if ((nvma =
+                 vma_create(vma->vm_start, start, vma->vm_flags)) == NULL)
+        {
+            return -E_NO_MEM;
+        }
+        vma_resize(vma, end, vma->vm_end);
+        insert_vma_struct(mm, nvma);
+        unmap_range(mm->pgdir, start, end);
+        return 0;
+    }
+
+    list_entry_t free_list, *le;
+    list_init(&free_list);
+    while (vma->vm_start < end)
+    {
+        le = list_next(&(vma->list_link));
+        remove_vma_struct(mm, vma);
+        list_add(&free_list, &(vma->list_link));
+        if (le == &(mm->mmap_list))
+        {
+            break;
+        }
+        vma = le2vma(le, list_link);
+    }
+
+    le = list_next(&free_list);
+    while (le != &free_list)
+    {
+        vma = le2vma(le, list_link);
+        le = list_next(le);
+        uintptr_t un_start, un_end;
+        if (vma->vm_start < start)
+        {
+            un_start = start, un_end = vma->vm_end;
+            vma_resize(vma, vma->vm_start, un_start);
+            insert_vma_struct(mm, vma);
+        }
+        else
+        {
+            un_start = vma->vm_start, un_end = vma->vm_end;
+            if (end < un_end)
+            {
+                un_end = end;
+                vma_resize(vma, un_end, vma->vm_end);
+                insert_vma_struct(mm, vma);
+            }
+            else
+            {
+                vma_destroy(vma);
+            }
+        }
+        unmap_range(mm->pgdir, un_start, un_end);
+    }
+    return 0;
 }
