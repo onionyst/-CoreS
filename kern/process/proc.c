@@ -828,9 +828,6 @@ load_icode(int fd, int argc, char **kargv)
     mm->brk_start += ((rand() % UBRK_RND_MASK) << PGSHIFT);
     mm->brk = mm->brk_start;
 
-    // tmp
-    cprintf("mm->brk_start = %08x\n", mm->brk_start);
-
     sysfile_close(fd);
 
     uintptr_t stacktop = USTACKTOP - ((rand() % USTACK_RND_MASK) << PGSHIFT);
